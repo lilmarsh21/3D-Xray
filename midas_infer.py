@@ -20,18 +20,20 @@ def download_model():
 
 def load_midas_model():
     download_model()
-
-    model_type = "DPT_Large"
-    midas = torch.hub.load("intel-isl/MiDaS", model_type, trust_repo=True)
-    midas.load_state_dict(torch.load(MODEL_PATH, map_location=torch.device('cpu')))
+    midas = torch.load(MODEL_PATH, map_location=torch.device('cpu'))
     midas.eval()
-
-    transform = torch.hub.load("intel-isl/MiDaS", "transforms").dpt_transform
+    # Replace with default transform or custom transform if needed
+    transform = lambda x: torch.nn.functional.interpolate(
+        torch.from_numpy(np.array(x)).permute(2, 0, 1).unsqueeze(0).float(),
+        size=(384, 384),
+        mode="bicubic",
+        align_corners=False
+    ) / 255.0
     return midas, transform
 
 def predict_depth(image_path, model, transform):
     img = Image.open(image_path).convert("RGB")
-    input_tensor = transform(img).unsqueeze(0)
+    input_tensor = transform(img)
 
     with torch.no_grad():
         prediction = model(input_tensor)[0]
