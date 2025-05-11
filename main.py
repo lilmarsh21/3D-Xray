@@ -2,8 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from typing import List  # ✅ FIXED: Proper typing import for UploadFile list
-
+from typing import List
 import os
 import shutil
 import uuid
@@ -27,8 +26,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ✅ Render health check fix
+@app.get("/")
+def root():
+    return {"message": "Service is running"}
+
+# ✅ Your main POST endpoint
 @app.post("/generate-3d/")
-async def generate_3d(xrays: List[UploadFile] = File(...)):  # ✅ FIXED HERE
+async def generate_3d(xrays: List[UploadFile] = File(...)):
     try:
         print("✅ /generate-3d/ hit")
 
@@ -62,4 +67,5 @@ async def generate_3d(xrays: List[UploadFile] = File(...)):  # ✅ FIXED HERE
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+# ✅ Serve .glb files
 app.mount("/static", StaticFiles(directory="static"), name="static")
