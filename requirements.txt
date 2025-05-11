@@ -5,3 +5,4 @@ torch
 opencv-python
 Pillow
 open3d
+timm
