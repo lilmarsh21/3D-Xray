@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -9,6 +9,9 @@ import traceback
 
 from midas_infer import load_midas_model, predict_depth
 from mesh_builder import merge_and_save_point_clouds
+
+# ✅ HARD-CODED SECRET KEY
+SECRET_KEY = "letmein123"
 
 UPLOAD_DIR = "uploads"
 OUTPUT_DIR = "static/models"
@@ -26,13 +29,17 @@ app.add_middleware(
 )
 
 @app.post("/generate-3d/")
-async def generate_3d(xrays: list[UploadFile] = File(...)):
+async def generate_3d(
+    xrays: list[UploadFile] = File(...),
+    x_api_key: str = Header(...)
+):
+    if x_api_key != SECRET_KEY:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    if not 1 <= len(xrays) <= 20:
+        raise HTTPException(status_code=400, detail="Upload between 1 and 20 X-rays.")
+
     try:
-        print("✅ /generate-3d/ hit")
-
-        if not 1 <= len(xrays) <= 20:
-            raise HTTPException(status_code=400, detail="Upload between 1 and 20 X-rays.")
-
         filepaths = []
         for file in xrays:
             ext = os.path.splitext(file.filename)[1].lower()
@@ -60,4 +67,5 @@ async def generate_3d(xrays: list[UploadFile] = File(...)):
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+# ✅ Serve static .glb files
 app.mount("/static", StaticFiles(directory="static"), name="static")
