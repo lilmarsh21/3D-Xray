@@ -20,15 +20,19 @@ def download_model():
 
 def load_midas_model():
     download_model()
-    midas = torch.load(MODEL_PATH, map_location=torch.device('cpu'))
+
+    # ✅ Fix for PyTorch 2.6+: allow full model loading
+    midas = torch.load(MODEL_PATH, map_location=torch.device('cpu'), weights_only=False)
     midas.eval()
-    # Replace with default transform or custom transform if needed
-    transform = lambda x: torch.nn.functional.interpolate(
-        torch.from_numpy(np.array(x)).permute(2, 0, 1).unsqueeze(0).float(),
+
+    # ✅ Simple transform function (you can replace with MiDaS transform if needed)
+    transform = lambda img: torch.nn.functional.interpolate(
+        torch.from_numpy(np.array(img)).permute(2, 0, 1).unsqueeze(0).float(),
         size=(384, 384),
         mode="bicubic",
         align_corners=False
     ) / 255.0
+
     return midas, transform
 
 def predict_depth(image_path, model, transform):
