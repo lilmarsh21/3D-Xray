@@ -11,6 +11,7 @@ import traceback
 from midas_infer import load_midas_model, predict_depth
 from mesh_builder import merge_and_save_point_clouds
 
+# File storage
 UPLOAD_DIR = "uploads"
 OUTPUT_DIR = "static/models"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -18,20 +19,21 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 app = FastAPI()
 
+# ✅ FIXED CORS middleware for external frontend like WordPress
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Or set to ["https://yourdomain.com"] for tighter security
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ Render health check fix
+# ✅ Health check route
 @app.get("/")
 def root():
     return {"message": "Service is running"}
 
-# ✅ Your main POST endpoint
+# ✅ 3D model generation route
 @app.post("/generate-3d/")
 async def generate_3d(xrays: List[UploadFile] = File(...)):
     try:
@@ -51,9 +53,11 @@ async def generate_3d(xrays: List[UploadFile] = File(...)):
                 shutil.copyfileobj(file.file, f)
             filepaths.append(save_path)
 
+        # Load model and predict depth for each image
         midas, transform = load_midas_model()
         depth_maps = [predict_depth(fp, midas, transform) for fp in filepaths]
 
+        # Merge into one 3D mesh
         model_id = str(uuid.uuid4())
         output_path = os.path.join(OUTPUT_DIR, f"{model_id}.glb")
         merge_and_save_point_clouds(depth_maps, output_path)
@@ -67,5 +71,5 @@ async def generate_3d(xrays: List[UploadFile] = File(...)):
         traceback.print_exc()
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-# ✅ Serve .glb files
+# ✅ Serve static .glb files
 app.mount("/static", StaticFiles(directory="static"), name="static")
